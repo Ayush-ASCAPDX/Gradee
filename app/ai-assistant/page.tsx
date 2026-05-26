@@ -13,7 +13,7 @@ export default async function AiAssistantPage() {
 
   return (
     <AppShell user={safeUser} pathname="/ai-assistant">
-      <AiAssistantClient />
+      <AiAssistantClient user={safeUser} />
     </AppShell>
   );
 }

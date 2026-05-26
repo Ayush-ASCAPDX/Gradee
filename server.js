@@ -8,7 +8,7 @@ const { loadEnvConfig } = require("@next/env");
 loadEnvConfig(process.cwd());
 
 const dev = !process.argv.includes("--prod") && process.env.NODE_ENV !== "production";
-const hostname = "0.0.0.0";
+const hostname = "127.0.0.1";
 const port = Number(process.env.PORT || 3000);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

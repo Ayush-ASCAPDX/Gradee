@@ -1,89 +1,91 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Avatar } from "@/components/ui";
+import { usePathname } from "next/navigation";
 import type { User } from "@/types/auth";
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/rooms", label: "Rooms" },
-  { href: "/messages", label: "Messages" },
-  { href: "/ai-assistant", label: "AI Assistant" },
-  { href: "/profile", label: "Profile" },
+  { href: "/rooms", label: "Live Rooms", icon: "videocam" },
+  { href: "#groups", label: "Groups", icon: "groups", disabled: true },
+  { href: "/messages", label: "Messages", icon: "chat_bubble" },
+  { href: "#notes", label: "Notes Market", icon: "note_stack", disabled: true },
+  { href: "/ai-assistant", label: "Ai Assistant", icon: "smart_toy" },
+  { href: "/profile", label: "Settings", icon: "settings" },
 ];
 
 export function AppShell({
   user,
-  pathname,
   children,
 }: {
   user: User;
-  pathname: string;
+  pathname?: string;
   children: ReactNode;
 }) {
+  const pathname = usePathname();
+
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1500px] gap-4 px-3 py-4 sm:px-5 lg:px-8">
-      <aside className="glass-panel hidden w-[248px] shrink-0 flex-col rounded-[30px] p-4 lg:flex">
-        <Link href="/" className="mb-6 flex items-center gap-3 px-2 py-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[radial-gradient(circle_at_top,#8b5cf6,#4c1d95)] font-black text-white shadow-[0_10px_40px_rgba(139,92,246,0.45)]">
-            G
+    <div className="grain min-h-screen overflow-hidden antialiased">
+      <main className="grid h-screen overflow-hidden lg:grid-cols-[80px_1fr]">
+        <aside className="hidden border-r border-white/10 bg-[#1e202b] py-6 flex flex-col items-center lg:flex z-50">
+          <div className="flex items-center justify-center">
+            <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-xl bg-plum text-white shadow-soft">
+              <span className="material-symbols-outlined">school</span>
+            </Link>
           </div>
-          <div>
-            <div className="text-lg font-bold tracking-tight text-white">Gradee</div>
-            <div className="text-xs text-white/45">The modern student portal</div>
+
+          <nav className="mt-12 flex w-full flex-col items-center space-y-4 px-3 font-medium">
+            {navItems.map((item) => {
+              const active = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              
+              if (item.disabled) {
+                return (
+                  <div
+                    key={item.label}
+                    className="sidebar-link group relative flex h-12 w-12 items-center justify-center rounded-xl cursor-not-allowed transition-all opacity-40 hover:bg-white/5"
+                  >
+                    <span className="material-symbols-outlined text-[#727a90]">{item.icon}</span>
+                    <div className="pointer-events-none absolute left-[3.5rem] z-50 ml-2 rounded-lg bg-[#272b3a] px-3 py-2 text-xs font-bold text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 whitespace-nowrap translate-x-[-10px] group-hover:translate-x-0 border border-white/5">
+                      {item.label} (Coming Soon)
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`sidebar-link group relative flex h-12 w-12 items-center justify-center rounded-xl cursor-pointer transition-all ${
+                    active
+                      ? "bg-[#4a62ff] text-white active"
+                      : "text-[#727a90] hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <span className={`material-symbols-outlined transition-colors ${active ? "text-white" : "text-[#727a90] group-hover:text-white"}`}>
+                    {item.icon}
+                  </span>
+                  <div className="pointer-events-none absolute left-[3.5rem] z-50 ml-2 rounded-lg bg-[#272b3a] px-3 py-2 text-xs font-bold text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 whitespace-nowrap translate-x-[-10px] group-hover:translate-x-0 border border-white/5">
+                    {item.label}
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto px-3 w-full">
+            <button className="group relative flex h-12 w-full items-center justify-center rounded-xl bg-deep text-white shadow-soft transition hover:bg-plum">
+              <span className="material-symbols-outlined">bolt</span>
+              <div className="pointer-events-none absolute left-[3.5rem] z-50 ml-2 rounded-lg bg-[#272b3a] px-3 py-2 text-xs font-bold text-white opacity-0 shadow-lg transition-all duration-200 group-hover:opacity-100 whitespace-nowrap translate-x-[-10px] group-hover:translate-x-0 border border-white/5">
+                Deep Work Session
+              </div>
+            </button>
           </div>
-        </Link>
-        <nav className="space-y-2">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                  active
-                    ? "bg-white text-slate-950 shadow-[0_16px_30px_rgba(255,255,255,0.12)]"
-                    : "text-white/70 hover:bg-white/6 hover:text-white"
-                }`}
-              >
-                <span>{item.label}</span>
-                <span className={active ? "text-slate-500" : "text-white/25"}>•</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="mt-auto rounded-[24px] border border-white/8 bg-black/30 p-3">
-          <div className="flex items-center gap-3">
-            <Avatar name={user.name} seed={user.id} className="h-11 w-11" />
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{user.name}</div>
-              <div className="truncate text-xs text-white/50">@{user.username}</div>
-            </div>
-          </div>
-        </div>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <div className="glass-panel flex items-center justify-between rounded-[26px] px-4 py-3 lg:hidden">
-          <Link href="/" className="text-lg font-bold tracking-tight text-white">
-            Gradee
-          </Link>
-          <div className="flex gap-2 overflow-x-auto">
-            {navItems.slice(1).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`rounded-full px-3 py-2 text-xs font-semibold ${
-                  pathname === item.href
-                    ? "bg-white text-slate-950"
-                    : "bg-white/8 text-white/72"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-        {children}
-      </div>
+        </aside>
+
+        <div className="flex h-screen flex-col overflow-hidden">{children}</div>
+      </main>
+      <span className="sr-only">{user.name}</span>
     </div>
   );
 }

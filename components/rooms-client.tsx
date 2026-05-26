@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Avatar, Button, Card, Pill } from "@/components/ui";
+import Link from "next/link";
+import { Avatar } from "@/components/ui";
 import { apiFetch } from "@/lib/http";
 import { getSocket } from "@/lib/socket";
 import type { User } from "@/types/auth";
@@ -43,6 +44,24 @@ export function RoomsClient({ currentUser }: { currentUser: User }) {
     [roomCounts],
   );
 
+  async function ensureLocalMedia() {
+    if (localStreamRef.current) {
+      return localStreamRef.current;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    localStreamRef.current = stream;
+    cameraTrackRef.current = stream.getVideoTracks()[0] || null;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream;
+    }
+    return stream;
+  }
+
   useEffect(() => {
     apiFetch<{ iceServers: RTCIceServer[] }>("/api/rtc-config")
       .then((data) => setIceServers(data.iceServers))
@@ -51,24 +70,6 @@ export function RoomsClient({ currentUser }: { currentUser: User }) {
 
   useEffect(() => {
     let mounted = true;
-
-    async function ensureLocalMedia() {
-      if (localStreamRef.current) {
-        return localStreamRef.current;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      localStreamRef.current = stream;
-      cameraTrackRef.current = stream.getVideoTracks()[0] || null;
-      if (mounted && localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      return stream;
-    }
 
     const socket = socketRef.current;
     socket.connect();
@@ -332,94 +333,207 @@ export function RoomsClient({ currentUser }: { currentUser: User }) {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-      <div className="space-y-4">
-        <Card className="p-5">
-          <Pill>Focus Rooms</Pill>
-          <h1 className="mt-4 text-2xl font-bold text-white">Live study spaces</h1>
-          <p className="mt-2 text-sm text-white/54">
-            Presence, room counts, WebRTC calls, mic/cam control, and room sharing are all wired to the migrated realtime layer.
-          </p>
-          <div className="mt-4 rounded-[22px] border border-white/8 bg-white/[0.03] p-4 text-sm text-white/68">
-            <div>Status: {status}</div>
-            <div className="mt-1">Online sockets: {presenceCount}</div>
-            <div className="mt-1">Signed in as @{currentUser.username}</div>
+    <>
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden">
+        <div className="soft-ui-nav mx-auto flex max-w-[100vw] items-center justify-between p-2 shadow-float">
+          <Link href="/rooms" className="flex h-12 w-12 items-center justify-center rounded-full bg-plum/10 text-plum transition-all active:scale-90">
+            <span className="material-symbols-outlined">videocam</span>
+          </Link>
+          <Link href="/messages" className="flex h-12 w-12 items-center justify-center rounded-full text-ink/40 transition-all active:scale-90">
+            <span className="material-symbols-outlined">chat_bubble</span>
+          </Link>
+          <div className="relative -mt-8">
+            <Link
+              href="/ai-assistant"
+              className="flex h-16 w-16 items-center justify-center rounded-full border-[6px] border-[#8aa1d1] bg-plum text-white shadow-soft transition-all active:scale-90"
+            >
+              <span className="material-symbols-outlined text-3xl">smart_toy</span>
+            </Link>
           </div>
-        </Card>
-        <Card className="p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Available rooms</h2>
-            <Pill>{ROOM_PRESETS.length} rooms</Pill>
+          <Link href="/home" className="flex h-12 w-12 items-center justify-center rounded-full text-ink/40 transition-all active:scale-90">
+            <span className="material-symbols-outlined">home</span>
+          </Link>
+          <Link href="/profile" className="flex h-12 w-12 items-center justify-center rounded-full text-ink/40 transition-all active:scale-90">
+            <span className="material-symbols-outlined">settings</span>
+          </Link>
+        </div>
+      </nav>
+
+      <section className="h-screen overflow-auto bg-[#242734] pb-28 text-white">
+        <div className="border-b border-white/10 bg-[#242734] px-3 py-2.5 lg:px-4">
+          <div className="grid gap-3 xl:grid-cols-[auto_minmax(240px,1fr)_auto_auto] xl:items-center">
+            <button
+              onClick={activeRoomId ? leaveRoom : undefined}
+              className="inline-flex min-h-[38px] items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#5a7bf9_0%,#6a6dff_55%,#ff8a54_100%)] px-4 text-sm font-semibold text-white"
+            >
+              <span className="material-symbols-outlined text-base">bolt</span>
+              {activeRoomId ? "Finish session" : "Ready to join"}
+            </button>
+            <label className="flex min-h-[44px] items-center gap-2 rounded-[0.9rem] border border-white/10 bg-[#252938] px-4 text-sm text-[#98a3d0]">
+              <span className="material-symbols-outlined">search</span>
+              <input
+                type="text"
+                placeholder="Search app users..."
+                className="w-full border-none bg-transparent text-[#dbe2ff] outline-none"
+              />
+            </label>
+            <div className="text-sm font-semibold text-[#8ea3ff]">Status: {status}</div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button onClick={() => void ensureLocalMedia()} className="inline-flex min-h-[38px] items-center justify-center rounded-full border border-white/10 bg-[#202533] px-4 text-sm font-semibold text-white">
+                Preview
+              </button>
+              <button onClick={() => void shareRoomLink()} className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full border border-white/10 bg-[#1d2230] text-[#91a0d1]">
+                <span className="material-symbols-outlined">share</span>
+              </button>
+              <button className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-full border border-white/10 bg-[#1d2230] text-[#91a0d1]">
+                <span className="material-symbols-outlined">notifications</span>
+              </button>
+            </div>
           </div>
-          <div className="space-y-3">
-            {ROOM_PRESETS.map((room) => (
-              <button
-                key={room.id}
-                className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
-                  activeRoomId === room.id
-                    ? "border-white/30 bg-white text-slate-950"
-                    : "border-white/8 bg-white/[0.04] text-white hover:bg-white/[0.08]"
-                }`}
-                onClick={() => void joinRoom(room.id)}
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-base font-semibold">{room.title}</div>
-                    <div className={`text-sm ${activeRoomId === room.id ? "text-slate-500" : "text-white/46"}`}>
-                      {room.topic}
+        </div>
+
+        <div className="px-3 py-3 lg:px-4">
+          <div className="flex flex-col gap-3">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="grid gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {ROOM_PRESETS.map((room) => {
+                    const active = activeRoomId === room.id;
+                    return (
+                      <button
+                        key={room.id}
+                        onClick={() => void joinRoom(room.id)}
+                        className={`flex items-center gap-3 rounded-[1.2rem] border px-3 py-2.5 text-left transition ${
+                          active
+                            ? "border-[#7490ff] bg-[rgba(89,116,255,0.22)] shadow-[0_12px_26px_rgba(29,42,116,0.35)]"
+                            : "border-white/10 bg-[#2a2d3b] hover:bg-[#313647]"
+                        }`}
+                      >
+                        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white/10 text-white shadow-sm">
+                          <span className="material-symbols-outlined text-[18px]">meeting_room</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{room.title}</p>
+                          <p className="text-[11px] text-white/55">
+                            {room.topic} • {roomCountMap.get(room.id) || 0} online
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="rounded-[1.2rem] border border-white/10 bg-[#2a2d3b] p-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/45">Live status</p>
+                        <p className="mt-1 text-base font-semibold">
+                          {activeRoomId ? ROOM_PRESETS.find((room) => room.id === activeRoomId)?.title : "Not connected"}
+                        </p>
+                        <p className="mt-1 text-xs text-white/60">
+                          {activeRoomId ? `${participants.length + 1} people in room` : `${presenceCount} online across Gradee`}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={toggleMic} className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-[#1d2230] px-4 text-sm font-semibold text-white">
+                          {micEnabled ? "Mute" : "Unmute"}
+                        </button>
+                        <button onClick={toggleCam} className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-[#1d2230] px-4 text-sm font-semibold text-white">
+                          {camEnabled ? "Hide Cam" : "Show Cam"}
+                        </button>
+                        <button onClick={() => void toggleScreenShare()} className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-[#1d2230] px-4 text-sm font-semibold text-white">
+                          {sharingScreen ? "Stop Share" : "Share"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="relative overflow-hidden rounded-[0.85rem] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(86,104,198,0.18),transparent_36%),linear-gradient(180deg,#232632_0%,#171b25_100%)] min-h-[176px]">
+                        <video ref={localVideoRef} autoPlay muted playsInline className="h-full w-full object-cover [transform:scaleX(-1)]" />
+                        <div className="absolute left-2 right-2 top-2 z-10 flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-white/10 bg-[rgba(25,29,42,0.76)] px-2 py-1 text-[11px] font-semibold text-white">
+                              you
+                            </span>
+                            <span className="rounded-full bg-[rgba(255,185,36,0.92)] px-2 py-1 text-[11px] font-semibold text-[#281300]">
+                              host
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-white/10 bg-[rgba(69,138,255,0.9)] px-2 py-1 text-[11px] font-semibold text-white">
+                              {sharingScreen ? "sharing" : camEnabled ? "camera on" : "camera off"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-[0.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,20,33,0.1)_0%,rgba(47,57,90,0.92)_100%)] px-4 py-3">
+                          <p className="text-sm font-semibold text-white">{currentUser.name}</p>
+                          <p className="mt-1 text-xs text-white/70">@{currentUser.username}</p>
+                        </div>
+                      </div>
+
+                      {remoteTiles.map((tile) => (
+                        <RemoteVideoTile key={tile.primarySocketId} tile={tile} />
+                      ))}
+
+                      {activeRoomId && remoteTiles.length === 0 ? (
+                        <div className="flex min-h-[176px] items-center justify-center rounded-[0.85rem] border border-dashed border-white/10 bg-[#232632] px-6 text-center text-sm text-white/55">
+                          Waiting for other participants to join this room.
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                  <div className={`rounded-full px-3 py-1 text-xs ${activeRoomId === room.id ? "bg-slate-200 text-slate-700" : "bg-white/8 text-white/70"}`}>
-                    {roomCountMap.get(room.id) || 0} inside
+
+                  <div className="rounded-[1.2rem] border border-white/10 bg-[#2a2d3b] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/45">People in room</p>
+                        <p className="mt-1 text-base font-semibold text-white">Presence</p>
+                      </div>
+                      <span className="inline-flex min-h-[38px] items-center rounded-full bg-[#171c28] px-3 text-sm font-semibold text-white">
+                        {activeRoomId ? participants.length + 1 : 0} connected
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="rounded-[1rem] bg-[#1f2432] px-4 py-3">
+                        <p className="text-sm font-semibold text-white">{currentUser.name} (you)</p>
+                        <p className="mt-1 text-xs text-white/60">{sharingScreen ? "Sharing screen" : camEnabled ? "Camera on" : "Camera off"}</p>
+                      </div>
+                      {participants.map((participant) => (
+                        <div key={participant.primarySocketId} className="rounded-[1rem] bg-[#1f2432] px-4 py-3">
+                          <p className="text-sm font-semibold text-white">{participant.name}</p>
+                          <p className="mt-1 text-xs text-white/60">@{participant.username}</p>
+                        </div>
+                      ))}
+                      {!activeRoomId ? (
+                        <div className="rounded-[1rem] bg-[#1f2432] px-4 py-3 text-sm text-white/60">
+                          Nobody is in this room yet.
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </button>
-            ))}
-          </div>
-        </Card>
-      </div>
-      <Card className="flex min-h-[78vh] flex-col p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-4">
-          <div>
-            <div className="text-lg font-semibold text-white">
-              {activeRoomId ? activeRoomId.replace("-", " ") : "Select a room"}
-            </div>
-            <div className="text-sm text-white/45">
-              {activeRoomId ? `${participants.length + 1} participant view` : "Join a room to start"}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={toggleMic}>{micEnabled ? "Mute Mic" : "Unmute Mic"}</Button>
-            <Button onClick={toggleCam}>{camEnabled ? "Hide Cam" : "Show Cam"}</Button>
-            <Button onClick={() => void toggleScreenShare()}>
-              {sharingScreen ? "Stop Share" : "Share Screen"}
-            </Button>
-            <Button onClick={() => void shareRoomLink()}>Share Link</Button>
-            {activeRoomId ? <Button onClick={leaveRoom}>Leave Room</Button> : null}
-          </div>
-        </div>
-        <div className="mt-4 grid flex-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top,#1f2937,#020617)]">
-            <video ref={localVideoRef} autoPlay muted playsInline className="h-full min-h-[260px] w-full object-cover" />
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-4 py-4">
-              <div>
-                <div className="text-sm font-semibold text-white">You</div>
-                <div className="text-xs text-white/55">@{currentUser.username}</div>
               </div>
-              <Pill>{sharingScreen ? "Sharing" : "Live"}</Pill>
+
+              <div className="rounded-[1.2rem] border border-white/10 bg-[#2a2d3b] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/45">Room controls</p>
+                <div className="mt-3 grid gap-2">
+                  <button onClick={() => void ensureLocalMedia()} className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-[#313647] px-4 text-sm font-semibold text-white">
+                    Start preview
+                  </button>
+                  <button onClick={() => activeRoomId ? leaveRoom() : void joinRoom(ROOM_PRESETS[0].id)} className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-[#313647] px-4 text-sm font-semibold text-white">
+                    {activeRoomId ? "Leave room" : "Join first room"}
+                  </button>
+                  <button onClick={() => void shareRoomLink()} className="inline-flex min-h-[42px] items-center justify-center rounded-xl bg-[#313647] px-4 text-sm font-semibold text-white">
+                    Copy room link
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-          {remoteTiles.map((tile) => (
-            <RemoteVideoTile key={tile.primarySocketId} tile={tile} />
-          ))}
-          {activeRoomId && remoteTiles.length === 0 ? (
-            <div className="grid min-h-[260px] place-items-center rounded-[28px] border border-dashed border-white/10 bg-white/[0.02] text-center text-white/44">
-              Waiting for other participants to join this room.
-            </div>
-          ) : null}
         </div>
-      </Card>
-    </div>
+      </section>
+    </>
   );
 }
 

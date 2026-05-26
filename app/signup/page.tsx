@@ -8,9 +8,5 @@ export default async function SignupPage() {
     redirect("/rooms");
   }
 
-  return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
-      <SignupForm />
-    </main>
-  );
+  return <SignupForm />;
 }

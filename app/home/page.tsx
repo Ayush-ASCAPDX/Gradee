@@ -1,12 +1,12 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { LandingPageClient } from "@/components/landing-page-client";
+import { HomePageClient } from "@/components/home-page-client";
 
-export default async function HomePage() {
+export default async function HomeRoutePage() {
   const user = await getCurrentUser();
   if (user) {
     redirect("/rooms");
   }
 
-  return <LandingPageClient />;
+  return <HomePageClient />;
 }
